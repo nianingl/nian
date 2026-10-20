@@ -1,11 +1,174 @@
 <!DOCTYPE html>
-<html>
+<html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <title>我的梦女传讯站</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>nian的传讯站</title>
+    <style>
+        /* 基础重置，模拟手机全屏 */
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+            background: linear-gradient(135deg, #fdfbfb 0%, #ebedee 100%);
+            height: 100vh; 
+            overflow: hidden; /* 隐藏外层滚动条 */
+            color: #333;
+        }
+
+        /* 顶部状态栏 (模拟) */
+        .status-bar {
+            height: 40px; display: flex; justify-content: space-between; align-items: center;
+            padding: 0 20px; font-size: 14px; font-weight: bold; color: #555;
+            position: absolute; top: 0; width: 100%; z-index: 10;
+        }
+
+        /* 轮播图/个人信息展示 */
+        .header-widget {
+            padding: 50px 20px 20px 20px;
+            background: white; border-radius: 0 0 30px 30px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            margin-bottom: 20px;
+        }
+        .header-widget h1 { font-size: 22px; color: #ff9a9e; margin-bottom: 5px; }
+        .header-widget p { font-size: 13px; color: #888; }
+
+        /* 页面滑动容器 */
+        .pages-container {
+            height: 100vh;
+            display: flex;
+            overflow-x: auto; /* 允许左右滑动 */
+            scroll-snap-type: x mandatory; /* 滑动吸附效果 */
+            scrollbar-width: none; /* 隐藏滚动条 */
+        }
+        .pages-container::-webkit-scrollbar { display: none; }
+
+        /* 单个页面 */
+        .page {
+            min-width: 100vw;
+            height: 100vh;
+            scroll-snap-align: start;
+            padding: 20px;
+            overflow-y: auto; /* 允许上下滑动 */
+            padding-bottom: 80px;
+        }
+
+        /* 应用网格布局 */
+        .app-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px 10px;
+            padding-top: 10px;
+        }
+
+        /* 单个应用图标 */
+        .app {
+            display: flex; flex-direction: column; align-items: center; cursor: pointer;
+            transition: transform 0.2s;
+        }
+        .app:active { transform: scale(0.9); }
+        .app-icon {
+            width: 60px; height: 60px; border-radius: 15px;
+            background: white; box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+            display: flex; justify-content: center; align-items: center;
+            font-size: 30px; margin-bottom: 8px;
+        }
+        .app-name { font-size: 12px; color: #444; font-weight: 500; }
+
+        /* 底部导航栏 */
+        .dock {
+            position: fixed; bottom: 15px; left: 50%; transform: translateX(-50%);
+            width: 90%; height: 70px; background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(10px); border-radius: 25px;
+            display: flex; justify-content: space-around; align-items: center;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+        .dock-icon {
+            width: 50px; height: 50px; border-radius: 12px; background: #f0f0f0;
+            display: flex; justify-content: center; align-items: center; font-size: 24px;
+        }
+
+        /* 提示弹窗 */
+        .toast {
+            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.7); color: white; padding: 15px 25px;
+            border-radius: 10px; font-size: 14px; display: none; z-index: 100;
+        }
+    </style>
 </head>
-<body style="text-align: center; font-family: sans-serif; padding-top: 50px; background-color: #fce4ec;">
-    <h1>传讯站已上线</h1>
-    <p>这里是梦女传讯的预留页面。</p>
+<body>
+
+    <!-- 状态栏 -->
+    <div class="status-bar">
+        <span id="clock">12:00</span>
+        <span>📶 🔋 100%</span>
+    </div>
+
+    <!-- 核心容器 -->
+    <div class="pages-container">
+        
+        <!-- 第一页：常用 (聊天、字卡、设置等) -->
+        <div class="page">
+            <div class="header-widget">
+                <h1>nian 的传讯站</h1>
+                <p>欢迎回来，今天想聊点什么？</p>
+            </div>
+            <div class="app-grid">
+                <div class="app" onclick="showToast('打开聊天')"><div class="app-icon">💬</div><div class="app-name">聊天</div></div>
+                <div class="app" onclick="showToast('打开字卡')"><div class="app-icon">🗂️</div><div class="app-name">字卡</div></div>
+                <div class="app" onclick="showToast('打开群聊')"><div class="app-icon">👥</div><div class="app-name">群聊</div></div>
+                <div class="app" onclick="showToast('打开设置')"><div class="app-icon">⚙️</div><div class="app-name">设置</div></div>
+                <div class="app" onclick="showToast('打开音乐')"><div class="app-icon">🎵</div><div class="app-name">音乐</div></div>
+                <div class="app" onclick="showToast('打开信箱')"><div class="app-icon">✉️</div><div class="app-name">信箱</div></div>
+            </div>
+        </div>
+
+        <!-- 第二页：娱乐 (追剧、朋友圈、许愿、商店等) -->
+        <div class="page">
+            <div class="app-grid" style="padding-top: 50px;">
+                <div class="app" onclick="showToast('打开追剧')"><div class="app-icon">📺</div><div class="app-name">追剧</div></div>
+                <div class="app" onclick="showToast('打开朋友圈')"><div class="app-icon">🌅</div><div class="app-name">朋友圈</div></div>
+                <div class="app" onclick="showToast('打开许愿')"><div class="app-icon">🌠</div><div class="app-name">许愿</div></div>
+                <div class="app" onclick="showToast('打开商店')"><div class="app-icon">🛍️</div><div class="app-name">商店</div></div>
+                <div class="app" onclick="showToast('打开互动')"><div class="app-icon">🎮</div><div class="app-name">互动</div></div>
+            </div>
+        </div>
+
+        <!-- 第三页：空白页 (以后可以自己加东西) -->
+        <div class="page" style="display: flex; justify-content: center; align-items: center;">
+            <p style="color: #aaa;">左滑回到第一页</p>
+        </div>
+
+    </div>
+
+    <!-- 底部 Dock 栏 -->
+    <div class="dock">
+        <div class="dock-icon">💬</div>
+        <div class="dock-icon">🎵</div>
+        <div class="dock-icon">✉️</div>
+        <div class="dock-icon">⚙️</div>
+    </div>
+
+    <!-- 弹窗提示 -->
+    <div class="toast" id="toast"></div>
+
+    <script>
+        // 实时时钟
+        setInterval(() => {
+            const now = new Date();
+            const time = now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0');
+            document.getElementById('clock').innerText = time;
+        }, 1000);
+
+        // 点击应用的弹窗提示
+        function showToast(appName) {
+            const toast = document.getElementById('toast');
+            toast.innerText = '正在打开：' + appName;
+            toast.style.display = 'block';
+            
+            setTimeout(() => {
+                toast.style.display = 'none';
+            }, 1500);
+        }
+    </script>
 </body>
 </html>
