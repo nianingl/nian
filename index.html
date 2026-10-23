@@ -1,265 +1,554 @@
-head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>nian</title>
-    <style>
-        /* 基础重置 */
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: -apple-system, sans-serif; background: #f4f6f9; height: 100vh; overflow: hidden; color: #333; }
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>QQ聊天 · 对方主动发消息</title>
+<style>
+    * { margin:0; padding:0; box-sizing:border-box; font-family:system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',sans-serif; }
+    body { background:#f5f7fa; display:flex; align-items:center; justify-content:center; min-height:100vh; padding:12px; }
 
-        /* 顶部状态栏 */
-        .status-bar { height: 40px; display: flex; justify-content: space-between; align-items: center; padding: 0 20px; font-size: 14px; font-weight: bold; color: #555; position: absolute; top: 0; width: 100%; z-index: 10; }
+    .chat-container {
+        width:100%; max-width:420px; background:#fff; border-radius:32px;
+        box-shadow:0 8px 30px rgba(0,0,0,0.12); overflow:hidden;
+        display:flex; flex-direction:column; height:700px; max-height:90vh;
+        border:1px solid rgba(0,0,0,0.04);
+    }
 
-        /* 页面容器：所有页面都在这里，通过隐藏/显示切换 */
-        .screen { 
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
-            background: linear-gradient(135deg, #fdfbfb 0%, #ebedee 100%);
-            display: none; /* 默认隐藏所有页面 */
-            flex-direction: column;
-            padding-top: 40px; /* 留出状态栏位置 */
-        }
-        .screen.active { display: flex; } /* 激活的页面显示出来 */
+    /* 顶部 */
+    .chat-header {
+        background:#fff; padding:16px 16px 8px; border-bottom:1px solid #f0f0f0;
+        display:flex; align-items:center; gap:12px; flex-shrink:0;
+    }
+    .back-btn { font-size:26px; color:#0099ff; cursor:pointer; width:28px; font-weight:300; user-select:none; transition:transform .1s; }
+    .back-btn:active { transform:scale(.9); opacity:.7; }
+    .avatar {
+        width:44px; height:44px; background:linear-gradient(145deg,#4a9eff,#0078ff);
+        border-radius:50%; display:flex; align-items:center; justify-content:center;
+        color:#fff; font-weight:600; font-size:20px; box-shadow:0 2px 6px rgba(0,120,255,.2);
+        flex-shrink:0; cursor:pointer;
+    }
+    .chat-title { flex:1; }
+    .chat-title h2 { font-size:18px; font-weight:600; color:#1a1a1a; letter-spacing:-.3px; display:flex; align-items:center; gap:6px; }
+    .chat-title .status { font-size:13px; color:#8e8e93; display:flex; align-items:center; gap:4px; margin-top:2px; }
+    .status-dot { width:7px; height:7px; background:#34c759; border-radius:50%; display:inline-block; }
+    .header-icons { display:flex; gap:16px; color:#0078ff; font-size:22px; cursor:pointer; user-select:none; }
+    .header-icons span { transition:transform .1s; }
+    .header-icons span:active { transform:scale(.85); opacity:.7; }
 
-        /* 桌面样式 */
-        .header-widget { padding: 20px; background: white; border-radius: 0 0 30px 30px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 20px; }
-        .header-widget h1 { font-size: 22px; color: #ff9a9e; margin-bottom: 5px; }
-        .app-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px 10px; padding: 20px; overflow-y: auto; }
-        .app { display: flex; flex-direction: column; align-items: center; cursor: pointer; }
-        .app-icon { width: 60px; height: 60px; border-radius: 15px; background: white; box-shadow: 0 4px 10px rgba(0,0,0,0.08); display: flex; justify-content: center; align-items: center; font-size: 30px; margin-bottom: 8px; }
-        .app-name { font-size: 12px; color: #444; }
+    /* 消息区 */
+    .chat-messages {
+        flex:1; overflow-y:auto; padding:16px 16px 12px; background:#f7f8fc;
+        display:flex; flex-direction:column; gap:4px; scroll-behavior:smooth;
+    }
+    .chat-messages::-webkit-scrollbar { width:4px; }
+    .chat-messages::-webkit-scrollbar-thumb { background:#cbd5e1; border-radius:10px; }
 
-        /* 内部软件页面通用样式 */
-        .app-header { display: flex; align-items: center; padding: 10px 15px; background: white; border-bottom: 1px solid #eee; }
-        .back-btn { font-size: 16px; color: #ff9a9e; cursor: pointer; padding: 5px 10px; font-weight: bold; }
-        .app-title { font-size: 16px; font-weight: bold; flex: 1; text-align: center; margin-right: 40px; }
-        .app-content { flex: 1; padding: 15px; overflow-y: auto; }
+    .timestamp { text-align:center; font-size:12px; color:#8e8e93; margin:8px 0 6px; opacity:.8; }
 
-        /* 聊天界面样式 */
-        .chat-box { display: flex; flex-direction: column; gap: 10px; padding-bottom: 20px; }
-        .message { max-width: 80%; padding: 10px; border-radius: 10px; font-size: 14px; line-height: 1.4; }
-        .message.me { background: #ff9a9e; color: white; align-self: flex-end; border-bottom-right-radius: 0; }
-        .message.dream { background: white; align-self: flex-start; border-bottom-left-radius: 0; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-        .chat-input-area { display: flex; gap: 10px; padding: 10px; background: white; border-top: 1px solid #eee; }
-        .chat-input-area input { flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 20px; outline: none; }
-        .chat-input-area button { background: #ff9a9e; color: white; border: none; padding: 0 20px; border-radius: 20px; font-weight: bold; }
+    .message-row { display:flex; align-items:flex-end; gap:8px; margin-bottom:2px; animation:msgFadeIn .25s ease; }
+    @keyframes msgFadeIn { from{opacity:0;transform:translateY(6px);} to{opacity:1;transform:translateY(0);} }
+    .message-row.other { justify-content:flex-start; }
+    .message-row.self { justify-content:flex-end; }
 
-        /* 字卡界面样式 */
-        .card-list { display: flex; flex-direction: column; gap: 10px; }
-        .card-item { background: white; padding: 15px; border-radius: 10px; display: flex; justify-content: space-between; box-shadow: 0 2px 5px rgba(0,0,0,0.05); font-size: 14px;}
-        .card-delete { color: #ff4d4f; cursor: pointer; }
-        .add-card-area { display: flex; gap: 10px; margin-top: 20px; }
-        .add-card-area input { flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 5px; }
+    .msg-avatar {
+        width:34px; height:34px; border-radius:50%; background:linear-gradient(135deg,#b0b8c5,#8f9aa8);
+        display:flex; align-items:center; justify-content:center; font-size:15px; font-weight:600;
+        color:#fff; flex-shrink:0; box-shadow:0 1px 3px rgba(0,0,0,.05); user-select:none;
+    }
+    .msg-avatar.self-avatar { background:linear-gradient(135deg,#6c8cff,#3d6eff); order:2; }
 
-        /* 设置界面样式 */
-        .settings-group { background: white; padding: 15px; border-radius: 10px; margin-bottom: 15px; }
-        .settings-item { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
-        .settings-item input { padding: 8px; border: 1px solid #ddd; border-radius: 5px; width: 60%; }
-    </style>
+    .bubble-wrapper { display:flex; flex-direction:column; max-width:78%; }
+    .bubble {
+        padding:10px 14px; border-radius:20px; font-size:15px; line-height:1.45;
+        word-break:break-word; box-shadow:0 1px 2px rgba(0,0,0,.03);
+        position:relative; width:fit-content; z-index:1;
+    }
+    .other .bubble { background:#fff; color:#1c1c1e; border-bottom-left-radius:6px; border:1px solid #e9e9ed; }
+    .self .bubble { background:#0078ff; color:#fff; border-bottom-right-radius:6px; margin-left:auto; }
+
+    .other .bubble::before {
+        content:''; position:absolute; left:-6px; bottom:8px; width:12px; height:12px;
+        background:#fff; border-radius:3px; transform:rotate(45deg);
+        border-left:1px solid #e9e9ed; border-bottom:1px solid #e9e9ed; z-index:0;
+    }
+    .self .bubble::after {
+        content:''; position:absolute; right:-6px; bottom:8px; width:12px; height:12px;
+        background:#0078ff; border-radius:3px; transform:rotate(45deg); z-index:0;
+    }
+
+    .msg-meta { font-size:10px; color:#8e8e93; margin-top:3px; padding:0 6px; display:flex; gap:6px; }
+    .self .msg-meta { justify-content:flex-end; }
+
+    .system-tip {
+        font-size:12px; color:#8e8e93; background:rgba(0,0,0,.03); padding:4px 12px;
+        border-radius:20px; text-align:center; align-self:center; margin:6px 0;
+        animation:msgFadeIn .3s ease;
+    }
+    .emoji-large { font-size:28px; line-height:1.2; padding:2px 6px; }
+
+    /* 输入区 */
+    .chat-input-area {
+        background:#fff; border-top:1px solid #e9e9ed; padding:10px 14px 14px;
+        display:flex; align-items:center; gap:10px; flex-shrink:0; flex-wrap:wrap;
+    }
+    .input-tools { display:flex; gap:14px; color:#0078ff; font-size:24px; cursor:pointer; flex-shrink:0; user-select:none; }
+    .input-tools span { line-height:1; transition:transform .1s; }
+    .input-tools span:active { transform:scale(.8); opacity:.7; }
+    .message-input {
+        flex:1; background:#f5f7fa; border:1px solid #f0f0f0; border-radius:24px;
+        padding:12px 18px; font-size:15px; outline:none; color:#1c1c1e; min-width:120px;
+        transition:all .15s;
+    }
+    .message-input::placeholder { color:#a0a5b0; font-size:14px; }
+    .message-input:focus { background:#fff; border-color:#c6d9ff; box-shadow:0 0 0 2px rgba(0,120,255,.08); }
+    .send-btn {
+        background:#0078ff; border:none; color:#fff; width:48px; height:48px; border-radius:50%;
+        display:flex; align-items:center; justify-content:center; font-size:15px; font-weight:600;
+        cursor:pointer; box-shadow:0 4px 10px rgba(0,120,255,.25); transition:all .1s; flex-shrink:0;
+    }
+    .send-btn:active { transform:scale(.92); background:#0066dd; }
+    .send-btn:disabled { opacity:.5; transform:scale(1); background:#a0bbd9; box-shadow:none; cursor:not-allowed; }
+
+    /* 输入中提示 */
+    .typing-indicator {
+        display:none; align-items:center; gap:6px; font-size:12px; color:#8e8e93;
+        padding:2px 10px; margin-left:42px; margin-bottom:6px;
+    }
+    .typing-indicator.show { display:flex; }
+    .typing-dots { display:flex; gap:3px; }
+    .typing-dots span { width:6px; height:6px; background:#a0a5b0; border-radius:50%; animation:typingBounce 1.2s infinite; }
+    .typing-dots span:nth-child(2) { animation-delay:.2s; }
+    .typing-dots span:nth-child(3) { animation-delay:.4s; }
+    @keyframes typingBounce { 0%,60%,100%{transform:translateY(0);opacity:.4;} 30%{transform:translateY(-4px);opacity:1;} }
+
+    /* 控制面板（调试用） */
+    .debug-panel {
+        display:flex; flex-wrap:wrap; gap:8px; padding:10px 14px; background:#fff8e7;
+        border-top:1px dashed #ffd700; font-size:13px; flex-shrink:0;
+    }
+    .debug-panel button {
+        background:#ffb800; border:none; color:#1c1c1e; padding:6px 12px;
+        border-radius:16px; font-size:13px; font-weight:500; cursor:pointer;
+        transition:all .1s;
+    }
+    .debug-panel button:active { transform:scale(.95); background:#e6a600; }
+    .debug-panel button.active { background:#34c759; color:#fff; }
+    .debug-panel .label { display:flex; align-items:center; color:#8e8e93; margin-right:auto; }
+
+    @media (max-width:480px) {
+        .chat-container { border-radius:24px; height:100vh; max-height:100vh; }
+        body { padding:0; }
+    }
+</style>
 </head>
 <body>
-
-    <!-- 状态栏 -->
-    <div class="status-bar">
-        <span id="clock">12:00</span>
-        <span>📶 🔋 100%</span>
-    </div>
-
-    <!-- ================= 1. 桌面主页 ================= -->
-    <div id="screen-home" class="screen active">
-        <div class="header-widget">
-            <h1 id="home-title">nian 的传讯站</h1>
-            <p>欢迎回来，今天想聊点什么？</p>
-        </div>
-        <div class="app-grid">
-            <!-- 只有带有 onclick="openApp('xxx')" 的才能点进去 -->
-            <div class="app" onclick="openApp('chat')"><div class="app-icon">💬</div><div class="app-name">聊天</div></div>
-            <div class="app" onclick="openApp('cards')"><div class="app-icon">🗂️</div><div class="app-name">字卡</div></div>
-            <div class="app" onclick="openApp('settings')"><div class="app-icon">⚙️</div><div class="app-name">设置</div></div>
-            
-            <!-- 下面这些还没有做，点了会提示 -->
-            <div class="app" onclick="alert('这个软件还在开发中哦！')"><div class="app-icon">👥</div><div class="app-name">群聊</div></div>
-            <div class="app" onclick="alert('这个软件还在开发中哦！')"><div class="app-icon">🎵</div><div class="app-name">音乐</div></div>
-            <div class="app" onclick="alert('这个软件还在开发中哦！')"><div class="app-icon">✉️</div><div class="app-name">信箱</div></div>
-        </div>
-    </div>
-
-    <!-- ================= 2. 聊天软件 ================= -->
-    <div id="screen-chat" class="screen">
-        <div class="app-header">
-            <div class="back-btn" onclick="closeApp()">〈 返回</div>
-            <div class="app-title" id="chat-title">与梦角的聊天</div>
-        </div>
-        <div class="app-content" id="chat-content">
-            <div class="chat-box" id="chat-box">
-                <!-- 聊天记录会显示在这里 -->
+<div class="chat-container">
+    <!-- 顶部 -->
+    <div class="chat-header">
+        <div class="back-btn" id="backBtn" title="返回">←</div>
+        <div class="avatar" id="avatarBtn" title="联系人头像">Q</div>
+        <div class="chat-title">
+            <h2>小Q助手 <span style="font-size:14px;font-weight:400;color:#8e8e93;">🌿</span></h2>
+            <div class="status">
+                <span class="status-dot"></span> <span id="onlineStatus">在线</span>
             </div>
         </div>
-        <div class="chat-input-area">
-            <input type="text" id="msg-input" placeholder="输入消息...">
-            <button onclick="sendMsg()">发送</button>
+        <div class="header-icons">
+            <span id="callBtn" title="语音通话">📞</span>
+            <span id="moreBtn" title="更多">⋯</span>
         </div>
     </div>
 
-    <!-- ================= 3. 字卡软件 ================= -->
-    <div id="screen-cards" class="screen">
-        <div class="app-header">
-            <div class="back-btn" onclick="closeApp()">〈 返回</div>
-            <div class="app-title">我的字卡库</div>
+    <!-- 消息区 -->
+    <div class="chat-messages" id="chatMessages">
+        <div class="timestamp" id="firstTimestamp">今天 上午 10:24</div>
+
+        <!-- 对方消息 -->
+        <div class="message-row other">
+            <div class="msg-avatar">Q</div>
+            <div class="bubble-wrapper">
+                <div class="bubble">你好呀！我是小Q，有什么可以帮你的吗？😊</div>
+                <div class="msg-meta">已读</div>
+            </div>
         </div>
-        <div class="app-content">
-            <div class="card-list" id="card-list">
-                <!-- 字卡列表会显示在这里 -->
+
+        <!-- 自己的消息 -->
+        <div class="message-row self">
+            <div class="bubble-wrapper">
+                <div class="bubble">我想问一下，明天天气怎么样？</div>
+                <div class="msg-meta">10:25 已读</div>
             </div>
-            <div class="add-card-area">
-                <input type="text" id="new-card-input" placeholder="添加新字卡...">
-                <button onclick="addCard()" style="background:#ff9a9e; color:white; border:none; border-radius:5px; padding:0 15px;">添加</button>
+            <div class="msg-avatar self-avatar">我</div>
+        </div>
+
+        <!-- 对方 -->
+        <div class="message-row other">
+            <div class="msg-avatar">Q</div>
+            <div class="bubble-wrapper">
+                <div class="bubble">明天晴转多云，气温 18°C ~ 26°C，适合出门玩哦 🌤️ 记得涂防晒。</div>
+                <div class="msg-meta">10:26</div>
             </div>
+        </div>
+
+        <!-- 输入中提示 -->
+        <div class="typing-indicator" id="typingIndicator">
+            <div class="typing-dots"><span></span><span></span><span></span></div>
+            小Q正在输入...
         </div>
     </div>
 
-    <!-- ================= 4. 设置软件 ================= -->
-    <div id="screen-settings" class="screen">
-        <div class="app-header">
-            <div class="back-btn" onclick="closeApp()">〈 返回</div>
-            <div class="app-title">设置</div>
+    <!-- 输入区 -->
+    <div class="chat-input-area">
+        <div class="input-tools">
+            <span id="voiceBtn" title="语音">🎤</span>
+            <span id="imageBtn" title="图片">🖼️</span>
+            <span id="emojiBtn" title="表情">😊</span>
         </div>
-        <div class="app-content">
-            <div class="settings-group">
-                <div class="settings-item">
-                    <label>梦角昵称：</label>
-                    <input type="text" id="setting-dream-name" value="梦角">
-                </div>
-                <div class="settings-item">
-                    <label>我的昵称：</label>
-                    <input type="text" id="setting-my-name" value="我">
-                </div>
-                <button onclick="saveSettings()" style="width:100%; padding:10px; background:#ff9a9e; color:white; border:none; border-radius:5px; margin-top:10px;">保存设置</button>
-            </div>
-            <p style="text-align:center; font-size:12px; color:#999;">数据保存在你的浏览器本地，不会丢失。</p>
-        </div>
+        <input type="text" class="message-input" id="messageInput" placeholder="输入消息..." autocomplete="off">
+        <button class="send-btn" id="sendBtn">发送</button>
     </div>
 
-    <script>
-        // ====== 1. 页面切换逻辑 ======
-        function openApp(appName) {
-            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-            document.getElementById('screen-' + appName).classList.add('active');
-            
-            // 如果打开的是聊天，更新聊天标题
-            if(appName === 'chat') {
-                document.getElementById('chat-title').innerText = `与 ${dreamName} 的聊天`;
+    <!-- 调试面板：控制对方主动发消息 -->
+    <div class="debug-panel">
+        <span class="label">🤖 对方主动发消息：</span>
+        <button id="autoReplyToggle" class="active">自动发消息：开</button>
+        <button id="manualTrigger">立刻发一条</button>
+    </div>
+</div>
+
+<script>
+(function() {
+    // ==================== DOM ====================
+    const chatMessages = document.getElementById('chatMessages');
+    const messageInput = document.getElementById('messageInput');
+    const sendBtn = document.getElementById('sendBtn');
+    const backBtn = document.getElementById('backBtn');
+    const avatarBtn = document.getElementById('avatarBtn');
+    const callBtn = document.getElementById('callBtn');
+    const moreBtn = document.getElementById('moreBtn');
+    const voiceBtn = document.getElementById('voiceBtn');
+    const imageBtn = document.getElementById('imageBtn');
+    const emojiBtn = document.getElementById('emojiBtn');
+    const typingIndicator = document.getElementById('typingIndicator');
+    const onlineStatus = document.getElementById('onlineStatus');
+    const autoReplyToggle = document.getElementById('autoReplyToggle');
+    const manualTrigger = document.getElementById('manualTrigger');
+
+    // ==================== 状态 ====================
+    let autoMessageEnabled = true;   // 是否自动主动发消息
+    let autoMessageTimer = null;     // 定时器
+    let isTypingShowing = false;
+
+    // ==================== 工具函数 ====================
+    function scrollToBottom() {
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    function getCurrentTime() {
+        const now = new Date();
+        return `${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
+    }
+
+    // ==================== 添加消息 ====================
+    function addMessage(content, isSelf = true, options = {}) {
+        const { isEmoji = false, isImage = false, isVoice = false } = options;
+        const messageRow = document.createElement('div');
+        messageRow.className = `message-row ${isSelf ? 'self' : 'other'}`;
+        const time = getCurrentTime();
+
+        const avatar = document.createElement('div');
+        avatar.className = `msg-avatar ${isSelf ? 'self-avatar' : ''}`;
+        avatar.textContent = isSelf ? '我' : 'Q';
+
+        const bubbleWrapper = document.createElement('div');
+        bubbleWrapper.className = 'bubble-wrapper';
+
+        const bubble = document.createElement('div');
+        bubble.className = 'bubble';
+
+        if (isImage) {
+            bubble.style.padding = '5px';
+            bubble.style.background = isSelf ? '#e3eaf5' : '#eef1f5';
+            const ph = document.createElement('div');
+            ph.style.width = '160px';
+            ph.style.height = '120px';
+            ph.style.background = isSelf ? 'linear-gradient(145deg,#d0dbeb,#b7c5da)' : 'linear-gradient(145deg,#d9e2ec,#cbd5e1)';
+            ph.style.borderRadius = '14px';
+            ph.style.display = 'flex';
+            ph.style.alignItems = 'center';
+            ph.style.justifyContent = 'center';
+            ph.style.color = isSelf ? '#2c3e50' : '#64748b';
+            ph.style.fontSize = '13px';
+            ph.textContent = isSelf ? '📸 分享图片' : '🌄 风景图';
+            bubble.appendChild(ph);
+        } else if (isVoice) {
+            bubble.style.display = 'flex';
+            bubble.style.alignItems = 'center';
+            bubble.style.gap = '8px';
+            bubble.innerHTML = '<span>🎤</span> 语音消息 · 5″';
+        } else if (isEmoji) {
+            bubble.classList.add('emoji-large');
+            bubble.textContent = content;
+        } else {
+            bubble.textContent = content;
+        }
+
+        const meta = document.createElement('div');
+        meta.className = 'msg-meta';
+        meta.textContent = isSelf ? `${time} 已读` : time;
+
+        bubbleWrapper.appendChild(bubble);
+        bubbleWrapper.appendChild(meta);
+
+        if (isSelf) {
+            messageRow.appendChild(bubbleWrapper);
+            messageRow.appendChild(avatar);
+        } else {
+            messageRow.appendChild(avatar);
+            messageRow.appendChild(bubbleWrapper);
+        }
+
+        chatMessages.insertBefore(messageRow, typingIndicator);
+        scrollToBottom();
+        return messageRow;
+    }
+
+    function addSystemTip(text) {
+        const tip = document.createElement('div');
+        tip.className = 'system-tip';
+        tip.textContent = text;
+        chatMessages.insertBefore(tip, typingIndicator);
+        scrollToBottom();
+    }
+
+    // ==================== 正在输入 ====================
+    function showTyping() {
+        typingIndicator.classList.add('show');
+        onlineStatus.textContent = '在线 · 正在输入...';
+        isTypingShowing = true;
+        scrollToBottom();
+    }
+
+    function hideTyping() {
+        typingIndicator.classList.remove('show');
+        onlineStatus.textContent = '在线';
+        isTypingShowing = false;
+    }
+
+    // ==================== 对方主动发消息（核心） ====================
+    const proactiveMessages = [
+        '在吗？👀',
+        '嘿，忙什么呢？',
+        '突然想到一个问题想问你～',
+        '今天过得怎么样呀？',
+        '我刚看到一个超有意思的东西！',
+        '在的话回我一下呗 😊',
+        '无聊中... 陪我聊会儿天吧',
+        '你之前说的那个事后来怎么样啦？',
+        '提醒你一下，别忘了喝水 💧',
+        '周末有空吗？一起出去玩呀～',
+        '刚刚看到一只超可爱的猫 🐱',
+        '哈哈，想起你上次说的笑话了',
+        '你最近是不是很忙呀？',
+        '有个好消息想告诉你！',
+    ];
+
+    const emojiProactive = ['😊', '😄', '🤔', '👋', '❤️', '🎉', '😎', '🌙'];
+
+    // 对方主动发一条消息
+    function sendProactiveMessage() {
+        if (isTypingShowing) return; // 正在输入中就不重复
+
+        showTyping();
+
+        const delay = 1000 + Math.random() * 1500; // 1~2.5秒
+
+        setTimeout(() => {
+            hideTyping();
+
+            // 随机决定消息类型
+            const rand = Math.random();
+            if (rand < 0.1) {
+                // 10% 发个表情
+                const emoji = emojiProactive[Math.floor(Math.random() * emojiProactive.length)];
+                addMessage(emoji, false, { isEmoji: true });
+            } else if (rand < 0.18) {
+                // 8% 发个语音消息
+                addMessage('', false, { isVoice: true });
+            } else if (rand < 0.25) {
+                // 7% 发个图片
+                addMessage('', false, { isImage: true });
+            } else {
+                // 75% 普通文字
+                const text = proactiveMessages[Math.floor(Math.random() * proactiveMessages.length)];
+                addMessage(text, false);
             }
+
+            // 偶尔加个系统提示
+            if (Math.random() > 0.85) {
+                setTimeout(() => addSystemTip('小Q助手 发来一条新消息'), 300);
+            }
+        }, delay);
+    }
+
+    // 启动/停止自动主动发消息
+    function startAutoMessages() {
+        if (autoMessageTimer) clearInterval(autoMessageTimer);
+        autoMessageTimer = setInterval(() => {
+            if (autoMessageEnabled) {
+                sendProactiveMessage();
+            }
+        }, 8000); // 每8秒主动发一条（可调）
+    }
+
+    function stopAutoMessages() {
+        if (autoMessageTimer) {
+            clearInterval(autoMessageTimer);
+            autoMessageTimer = null;
         }
+    }
 
-        function closeApp() {
-            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-            document.getElementById('screen-home').classList.add('active');
-        }
+    // ==================== 发送用户消息 ====================
+    function sendUserMessage() {
+        const text = messageInput.value.trim();
+        if (!text) return;
 
-        // ====== 2. 时钟 ======
-        setInterval(() => {
-            const now = new Date();
-            document.getElementById('clock').innerText = now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0');
-        }, 1000);
+        addMessage(text, true);
+        messageInput.value = '';
+        messageInput.focus();
 
-        // ====== 3. 全局变量与数据存储 ======
-        let dreamName = localStorage.getItem('dreamName') || 'Nina';
-        let myName = localStorage.getItem('myName') || '我';
-        let chatHistory = JSON.parse(localStorage.getItem('chatHistory')) || [];
-        let cards = JSON.parse(localStorage.getItem('cards')) || ['早安呀！', '今天天气真不错。', '你在干嘛呢？', '我有点想你了。'];
-
-        // 初始化数据
-        function initData() {
-            document.getElementById('home-title').innerText = `${dreamName} 的传讯站`;
-            document.getElementById('setting-dream-name').value = dreamName;
-            document.getElementById('setting-my-name').value = myName;
-            renderChat();
-            renderCards();
-        }
-
-        // ====== 4. 聊天功能 ======
-        function renderChat() {
-            const chatBox = document.getElementById('chat-box');
-            chatBox.innerHTML = '';
-            chatHistory.forEach(msg => {
-                const div = document.createElement('div');
-                div.className = `message ${msg.type}`;
-                div.innerText = msg.text;
-                chatBox.appendChild(div);
-            });
-            // 滚动到底部
-            const content = document.getElementById('chat-content');
-            content.scrollTop = content.scrollHeight;
-        }
-
-        function sendMsg() {
-            const input = document.getElementById('msg-input');
-            const text = input.value.trim();
-            if(!text) return;
-
-            // 添加我的消息
-            chatHistory.push({ type: 'me', text: text });
-            input.value = '';
-            renderChat();
-
-            // 梦角回复 (延迟1秒)
+        // 用户发消息后，对方会"回应"（也是主动发消息的一种）
+        if (autoMessageEnabled) {
             setTimeout(() => {
-                // 从字卡里随机挑一句回复
-                const reply = cards[Math.floor(Math.random() * cards.length)];
-                chatHistory.push({ type: 'dream', text: reply });
-                renderChat();
-                saveToLocal();
-            }, 1000);
+                if (!isTypingShowing) {
+                    showTyping();
+                    setTimeout(() => {
+                        hideTyping();
+                        const replies = [
+                            '收到啦～',
+                            '嗯嗯，我明白你的意思',
+                            '哈哈哈好的',
+                            '你说得对！',
+                            '我也有同感 😊',
+                            '然后呢？继续说说看',
+                            '好呀好呀',
+                            '这个我记下了 📝',
+                        ];
+                        addMessage(replies[Math.floor(Math.random() * replies.length)], false);
+                    }, 1200);
+                }
+            }, 600);
         }
+    }
 
-        // ====== 5. 字卡功能 ======
-        function renderCards() {
-            const list = document.getElementById('card-list');
-            list.innerHTML = '';
-            cards.forEach((card, index) => {
-                const div = document.createElement('div');
-                div.className = 'card-item';
-                div.innerHTML = `<span>${card}</span><span class="card-delete" onclick="deleteCard(${index})">删除</span>`;
-                list.appendChild(div);
-            });
+    // ==================== 事件绑定 ====================
+
+    // 发送按钮
+    sendBtn.addEventListener('click', sendUserMessage);
+
+    // 回车发送
+    messageInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            sendUserMessage();
         }
+    });
 
-        function addCard() {
-            const input = document.getElementById('new-card-input');
-            const text = input.value.trim();
-            if(!text) return;
-            cards.push(text);
-            input.value = '';
-            renderCards();
-            saveToLocal();
+    // 返回
+    backBtn.addEventListener('click', () => alert('👈 返回上一页（模拟）'));
+
+    // 头像
+    avatarBtn.addEventListener('click', () => {
+        alert('📇 查看小Q助手资料\n\n昵称：小Q助手\nQQ：123456789\n签名：随时为你服务～');
+    });
+
+    // 通话
+    callBtn.addEventListener('click', () => alert('📞 正在呼叫 小Q助手...\n（模拟通话界面）'));
+
+    // 更多
+    moreBtn.addEventListener('click', () => {
+        alert('⚙️ 更多操作\n\n· 聊天设置\n· 消息记录\n· 举报\n· 清空聊天');
+    });
+
+    // 语音按钮
+    voiceBtn.addEventListener('click', () => {
+        addMessage('', true, { isVoice: true });
+        if (autoMessageEnabled) {
+            setTimeout(() => {
+                showTyping();
+                setTimeout(() => {
+                    hideTyping();
+                    addMessage('语音收到啦～ 你说得对 🎧', false);
+                }, 1500);
+            }, 400);
         }
+    });
 
-        function deleteCard(index) {
-            cards.splice(index, 1);
-            renderCards();
-            saveToLocal();
+    // 图片按钮
+    imageBtn.addEventListener('click', () => {
+        addMessage('', true, { isImage: true });
+        if (autoMessageEnabled) {
+            setTimeout(() => {
+                showTyping();
+                setTimeout(() => {
+                    hideTyping();
+                    addMessage('图片很好看！📸', false);
+                }, 1500);
+            }, 400);
         }
+    });
 
-        // ====== 6. 设置功能 ======
-        function saveSettings() {
-            dreamName = document.getElementById('setting-dream-name').value || 'Nina';
-            myName = document.getElementById('setting-my-name').value || '我';
-            
-            document.getElementById('home-title').innerText = `${dreamName} 的传讯站`;
-            saveToLocal();
-            alert('保存成功！');
+    // 表情按钮
+    emojiBtn.addEventListener('click', () => {
+        const emojis = ['😊', '😂', '🤔', '👍', '❤️', '🎉', '😎', '🥺'];
+        const emoji = emojis[Math.floor(Math.random() * emojis.length)];
+        addMessage(emoji, true, { isEmoji: true });
+
+        if (autoMessageEnabled) {
+            setTimeout(() => {
+                showTyping();
+                setTimeout(() => {
+                    hideTyping();
+                    const replies = ['哈哈可爱！', '你发的表情好有趣 😆', '我也回你一个 🎈', '😄😄😄'];
+                    addMessage(replies[Math.floor(Math.random() * replies.length)], false);
+                }, 1200);
+            }, 400);
         }
+    });
 
-        // ====== 7. 保存到浏览器 ======
-        function saveToLocal() {
-            localStorage.setItem('dreamName', dreamName);
-            localStorage.setItem('myName', myName);
-            localStorage.setItem('chatHistory', JSON.stringify(chatHistory));
-            localStorage.setItem('cards', JSON.stringify(cards));
+    // ==================== 调试面板控制 ====================
+    autoReplyToggle.addEventListener('click', () => {
+        autoMessageEnabled = !autoMessageEnabled;
+        if (autoMessageEnabled) {
+            autoReplyToggle.textContent = '自动发消息：开';
+            autoReplyToggle.classList.add('active');
+            startAutoMessages();
+        } else {
+            autoReplyToggle.textContent = '自动发消息：关';
+            autoReplyToggle.classList.remove('active');
+            stopAutoMessages();
+            hideTyping();
         }
+    });
 
-        // 启动时加载数据
-        initData();
-    </script>
+    manualTrigger.addEventListener('click', () => {
+        // 手动触发一条对方主动消息
+        sendProactiveMessage();
+    });
+
+    // ==================== 初始化 ====================
+    scrollToBottom();
+    startAutoMessages(); // 启动自动主动发消息（每8秒一次）
+
+    // 首次启动后，5秒发一条主动消息（让用户马上看到效果）
+    setTimeout(() => {
+        if (autoMessageEnabled) {
+            sendProactiveMessage();
+        }
+    }, 5000);
+
+})();
+</script>
 </body>
 </html>
